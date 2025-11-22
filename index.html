@@ -72,7 +72,8 @@
     /***** 1) PUT YOUR SUPABASE KEYS HERE *****/
     const SUPABASE_URL = "https://zeelaeoxbvdryfkorjng.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplZWxhZW94YnZkcnlma29yam5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MzI5NjMsImV4cCI6MjA3OTQwODk2M30.2XCH0zX-AmLiHraD3yAi8ub1FIpwkD91h9b983nEqqQ";
-    const sb = supabase.createClient(https://zeelaeoxbvdryfkorjng.supabase.co, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplZWxhZW94YnZkcnlma29yam5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MzI5NjMsImV4cCI6MjA3OTQwODk2M30.2XCH0zX-AmLiHraD3yAi8ub1FIpwkD91h9b983nEqqQ);
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     /***** helpers *****/
     const $ = (id) => document.getElementById(id);
