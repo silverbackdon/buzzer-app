@@ -44,13 +44,6 @@
     button:disabled { opacity:.5; cursor:not-allowed; }
     .row { display:flex; gap:8px; }
     .row > * { flex:1; }
-    .pill {
-      display:inline-block;
-      padding:6px 10px;
-      background:#232329;
-      border-radius:999px;
-      margin:4px 6px 0 0;
-    }
     .winner {
       font-size: 20px;
       font-weight: 800;
@@ -59,7 +52,28 @@
     .small { opacity:.8; font-size: 13px; }
     a { color:#7db2ff; word-break:break-all; }
 
-    /* optional: subtle countdown emphasis */
+    /* Member list rows */
+    .memberRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:#232329;
+      border-radius:12px;
+      padding:8px 10px;
+      margin:6px 0;
+    }
+    .memberName{ font-size:15px; font-weight:600; }
+    .deleteBtn{
+      width:auto;
+      padding:4px 10px;
+      font-size:18px;
+      line-height:18px;
+      border-radius:10px;
+      background:#3a3a42;
+      font-weight:800;
+    }
+    .deleteBtn:hover{ background:#ff5b5b; color:#fff; }
+
     .countdownText {
       font-size: 18px;
       font-weight: 700;
@@ -101,6 +115,7 @@
       <div class="card">
         <h2>Members</h2>
         <div id="membersList"></div>
+        <div id="membersHint" class="small" style="margin-top:6px; opacity:.7;"></div>
       </div>
 
       <div class="card">
@@ -147,6 +162,7 @@
     const statusText = $("statusText");
     const winnerBox = $("winnerBox");
     const membersList = $("membersList");
+    const membersHint = $("membersHint");
     const shareBlock = $("shareBlock");
     const hostControls = $("hostControls");
     const startCountdownBtn = $("startCountdownBtn");
@@ -159,7 +175,11 @@
     let channel = null;
 
     let countdownTimer = null;
-    const COUNTDOWN_DEFAULT = 3; // seconds for 3-2-1
+    const COUNTDOWN_DEFAULT = 3;
+
+    function isHostUser() {
+      return me && room && me === room.host_name;
+    }
 
     function renderRoom() {
       if (!room) return;
@@ -172,20 +192,45 @@
         </a>
       `;
 
-      // Members
+      const host = room.host_name;
+      const hostView = isHostUser();
+
+      // Hint text
+      membersHint.textContent = hostView
+        ? "You are the host. You can remove players with ×."
+        : `Host is ${host}.`;
+
+      // Members list (host-only delete)
       membersList.innerHTML = "";
       (room.members || []).forEach(n => {
-        const pill = document.createElement("span");
-        pill.className = "pill";
-        pill.textContent = n;
-        membersList.appendChild(pill);
+        const row = document.createElement("div");
+        row.className = "memberRow";
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "memberName";
+
+        const labelHost = (n === host) ? " (host)" : "";
+        const labelYou  = (me === n && n !== host) ? " (you)" : "";
+        nameEl.textContent = n + labelHost + labelYou;
+
+        row.appendChild(nameEl);
+
+        // Show delete only if viewer is host AND target is not host
+        if (hostView && n !== host) {
+          const delBtn = document.createElement("button");
+          delBtn.className = "deleteBtn";
+          delBtn.textContent = "×";
+          delBtn.setAttribute("data-name", n);
+          row.appendChild(delBtn);
+        }
+
+        membersList.appendChild(row);
       });
 
       // Host-only controls visibility
-      const isHost = me && room.host_name === me;
-      hostControls.style.display = isHost ? "block" : "none";
+      hostControls.style.display = hostView ? "block" : "none";
 
-      // Countdown logic (synced)
+      // Countdown logic
       const now = Date.now();
       const hasCountdown = room.countdown_start && room.countdown_seconds;
       let remainingMs = 0;
@@ -199,7 +244,6 @@
       }
 
       if (room.winner_name) {
-        // winner locked in
         buzzBtn.disabled = true;
         startCountdownBtn.disabled = true;
         statusText.textContent = "Buzzer closed.";
@@ -210,7 +254,6 @@
       } else {
         winnerBox.innerHTML = `<div class="small">No winner yet. First buzz wins.</div>`;
 
-        // host countdown button state
         startCountdownBtn.disabled = hasCountdown && !isOpen;
 
         if (!me) {
@@ -316,10 +359,43 @@
       renderRoom();
     }
 
+    async function deleteMember(nameToDelete) {
+      if (!room || !isHostUser()) return;
+
+      // reload latest
+      await loadRoom(room.id);
+
+      const currentMembers = room.members || [];
+      const hostName = room.host_name;
+
+      // never delete host
+      if (nameToDelete === hostName) return;
+
+      const newMembers = currentMembers.filter(n => n !== nameToDelete);
+      const deletingWinner = room.winner_name === nameToDelete;
+
+      const updatePayload = { members: newMembers };
+
+      if (deletingWinner) {
+        updatePayload.winner_name = null;
+        updatePayload.winner_at = null;
+        updatePayload.countdown_start = null;
+        updatePayload.countdown_seconds = null;
+      }
+
+      const { error } = await sb
+        .from("rooms")
+        .update(updatePayload)
+        .eq("id", room.id);
+
+      if (error) return alert(error.message);
+
+      await loadRoom(room.id);
+    }
+
     async function buzz() {
       if (!me || !room || room.winner_name) return;
 
-      // if countdown exists and not open, block
       if (room.countdown_start && room.countdown_seconds) {
         const startMs = new Date(room.countdown_start).getTime();
         const openMs = startMs + room.countdown_seconds * 1000;
@@ -329,7 +405,6 @@
       buzzBtn.disabled = true;
       statusText.textContent = "Buzzing…";
 
-      // atomic first-wins update
       const { data, error } = await sb
         .from("rooms")
         .update({ winner_name: me, winner_at: new Date().toISOString() })
@@ -349,9 +424,8 @@
     }
 
     async function startCountdown() {
-      if (!room || !me || me !== room.host_name) return;
+      if (!room || !isHostUser()) return;
 
-      // If countdown running, ignore
       if (room.countdown_start && room.countdown_seconds && !room.winner_name) {
         const startMs = new Date(room.countdown_start).getTime();
         const openMs = startMs + room.countdown_seconds * 1000;
@@ -372,7 +446,7 @@
     }
 
     async function resetBuzzer() {
-      if (!room || !me || me !== room.host_name) return;
+      if (!room || !isHostUser()) return;
 
       const { error } = await sb
         .from("rooms")
@@ -393,6 +467,16 @@
     buzzBtn.onclick = buzz;
     startCountdownBtn.onclick = startCountdown;
     resetBtn.onclick = resetBuzzer;
+
+    // Host-only delete (event delegation)
+    membersList.addEventListener("click", (e) => {
+      if (!isHostUser()) return;
+      const btn = e.target.closest(".deleteBtn");
+      if (!btn) return;
+      const name = btn.getAttribute("data-name");
+      if (!name) return;
+      deleteMember(name);
+    });
 
     (async function init() {
       if (!roomId) {
