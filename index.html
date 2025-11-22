@@ -5,26 +5,69 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Buzzer App</title>
   <style>
-    body { font-family: system-ui, -apple-system, Arial, sans-serif; margin: 0; background:#0b0b0c; color:#fff; }
+    :root { color-scheme: dark; }
+    body {
+      font-family: system-ui, -apple-system, Arial, sans-serif;
+      margin: 0;
+      background:#0b0b0c;
+      color:#fff;
+    }
     .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
-    .card { background:#151518; border-radius:16px; padding:16px; margin:12px 0; box-shadow:0 6px 18px rgba(0,0,0,.35); }
+    .card {
+      background:#151518;
+      border-radius:16px;
+      padding:16px;
+      margin:12px 0;
+      box-shadow:0 6px 18px rgba(0,0,0,.35);
+    }
     h1,h2 { margin: 6px 0 10px; }
     input, button {
-      width: 100%; padding: 14px; font-size: 16px; border-radius: 12px; border: none;
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border-radius: 12px;
+      border: none;
       box-sizing: border-box;
     }
-    input { background:#222227; color:#fff; outline: 1px solid #333; }
-    button { background:#2b7cff; color:white; font-weight:700; cursor:pointer; }
+    input {
+      background:#222227;
+      color:#fff;
+      outline: 1px solid #333;
+    }
+    button {
+      background:#2b7cff;
+      color:white;
+      font-weight:700;
+      cursor:pointer;
+    }
     button.secondary { background:#2a2a2f; }
     button:disabled { opacity:.5; cursor:not-allowed; }
     .row { display:flex; gap:8px; }
     .row > * { flex:1; }
-    .pill { display:inline-block; padding:6px 10px; background:#232329; border-radius:999px; margin:4px 6px 0 0; }
-    .winner { font-size: 20px; font-weight: 800; color:#7CFF9A; }
+    .pill {
+      display:inline-block;
+      padding:6px 10px;
+      background:#232329;
+      border-radius:999px;
+      margin:4px 6px 0 0;
+    }
+    .winner {
+      font-size: 20px;
+      font-weight: 800;
+      color:#7CFF9A;
+    }
     .small { opacity:.8; font-size: 13px; }
     a { color:#7db2ff; word-break:break-all; }
+
+    /* optional: subtle countdown emphasis */
+    .countdownText {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <h1>📣 Buzzer</h1>
@@ -35,7 +78,10 @@
       <input id="hostName" placeholder="Your name (host)" />
       <div style="height:10px"></div>
       <button id="createRoomBtn">Create room</button>
-      <p class="small">You’ll get a shareable link like: <br/> yoursite.com/?room=xxxx</p>
+      <p class="small">
+        You’ll get a shareable link like:<br/>
+        yoursite.com/?room=xxxx
+      </p>
     </div>
 
     <!-- ROOM VIEW -->
@@ -59,6 +105,18 @@
 
       <div class="card">
         <h2>Buzzer</h2>
+
+        <!-- Host controls -->
+        <div id="hostControls" style="display:none; margin-bottom:8px;">
+          <div class="row">
+            <button id="startCountdownBtn" class="secondary">Start 3-2-1 Countdown</button>
+            <button id="resetBtn" class="secondary">Reset Buzzer</button>
+          </div>
+          <div class="small" style="margin-top:6px; opacity:.7;">
+            Host controls only
+          </div>
+        </div>
+
         <button id="buzzBtn" disabled>BUZZ!</button>
         <p id="statusText" class="small"></p>
         <div id="winnerBox" style="margin-top:10px;"></div>
@@ -68,13 +126,14 @@
 
   <!-- Supabase JS CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    /***** 1) PUT YOUR SUPABASE KEYS HERE *****/
-const SUPABASE_URL = "https://zeelaeoxbvdryfkorjng.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplZWxhZW94YnZkcnlma29yam5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MzI5NjMsImV4cCI6MjA3OTQwODk2M30.2XCH0zX-AmLiHraD3yAi8ub1FIpwkD91h9b983nEqqQ";
 
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script>
+    /***** SUPABASE KEYS *****/
+    const SUPABASE_URL = "https://zeelaeoxbvdryfkorjng.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplZWxhZW94YnZkcnlma29yam5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MzI5NjMsImV4cCI6MjA3OTQwODk2M30.2XCH0zX-AmLiHraD3yAi8ub1FIpwkD91h9b983nEqqQ";
+
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     /***** helpers *****/
     const $ = (id) => document.getElementById(id);
@@ -89,12 +148,18 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const winnerBox = $("winnerBox");
     const membersList = $("membersList");
     const shareBlock = $("shareBlock");
+    const hostControls = $("hostControls");
+    const startCountdownBtn = $("startCountdownBtn");
+    const resetBtn = $("resetBtn");
 
     const localKey = (rid) => `buzzer_name_${rid}`;
 
     let me = null;
     let room = null;
     let channel = null;
+
+    let countdownTimer = null;
+    const COUNTDOWN_DEFAULT = 3; // seconds for 3-2-1
 
     function renderRoom() {
       if (!room) return;
@@ -116,9 +181,27 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         membersList.appendChild(pill);
       });
 
-      // Winner / buzzer state
+      // Host-only controls visibility
+      const isHost = me && room.host_name === me;
+      hostControls.style.display = isHost ? "block" : "none";
+
+      // Countdown logic (synced)
+      const now = Date.now();
+      const hasCountdown = room.countdown_start && room.countdown_seconds;
+      let remainingMs = 0;
+      let isOpen = !hasCountdown;
+
+      if (hasCountdown) {
+        const startMs = new Date(room.countdown_start).getTime();
+        const openMs = startMs + room.countdown_seconds * 1000;
+        remainingMs = openMs - now;
+        isOpen = remainingMs <= 0;
+      }
+
       if (room.winner_name) {
+        // winner locked in
         buzzBtn.disabled = true;
+        startCountdownBtn.disabled = true;
         statusText.textContent = "Buzzer closed.";
         winnerBox.innerHTML = `
           <div class="winner">🏆 ${room.winner_name} buzzed first!</div>
@@ -126,9 +209,35 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         `;
       } else {
         winnerBox.innerHTML = `<div class="small">No winner yet. First buzz wins.</div>`;
-        buzzBtn.disabled = !me;
-        statusText.textContent = me ? "Ready…" : "Join to enable buzzer.";
+
+        // host countdown button state
+        startCountdownBtn.disabled = hasCountdown && !isOpen;
+
+        if (!me) {
+          buzzBtn.disabled = true;
+          statusText.textContent = "Join to enable buzzer.";
+        } else if (!isOpen) {
+          buzzBtn.disabled = true;
+          const secondsLeft = Math.ceil(remainingMs / 1000);
+          statusText.innerHTML = `<span class="countdownText">Countdown… ${secondsLeft}</span>`;
+        } else {
+          buzzBtn.disabled = false;
+          statusText.textContent = "Ready…";
+        }
       }
+
+      startLocalCountdownTicker();
+    }
+
+    function startLocalCountdownTicker() {
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdownTimer = null;
+
+      if (!room || !room.countdown_start || !room.countdown_seconds || room.winner_name) return;
+
+      countdownTimer = setInterval(() => {
+        renderRoom();
+      }, 200);
     }
 
     async function loadRoom(rid) {
@@ -168,16 +277,20 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       const { data, error } = await sb
         .from("rooms")
-        .insert({ host_name: hostName, members: [hostName] })
+        .insert({
+          host_name: hostName,
+          members: [hostName],
+          winner_name: null,
+          winner_at: null,
+          countdown_start: null,
+          countdown_seconds: null
+        })
         .select()
         .single();
 
       if (error) return alert(error.message);
 
-      // store host name locally for this room
       localStorage.setItem(localKey(data.id), hostName);
-
-      // go to room
       location.href = `${location.pathname}?room=${data.id}`;
     }
 
@@ -185,12 +298,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const name = $("joinName").value.trim();
       if (!name) return alert("Enter your name.");
 
-      // reload latest
       await loadRoom(room.id);
-
-      if (room.winner_name) {
-        alert("Buzzer already won. You can still watch.");
-      }
 
       const already = (room.members || []).includes(name);
       const newMembers = already ? room.members : [...room.members, name];
@@ -211,10 +319,17 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     async function buzz() {
       if (!me || !room || room.winner_name) return;
 
+      // if countdown exists and not open, block
+      if (room.countdown_start && room.countdown_seconds) {
+        const startMs = new Date(room.countdown_start).getTime();
+        const openMs = startMs + room.countdown_seconds * 1000;
+        if (Date.now() < openMs) return;
+      }
+
       buzzBtn.disabled = true;
       statusText.textContent = "Buzzing…";
 
-      // atomic "first wins": update only if winner_name is null
+      // atomic first-wins update
       const { data, error } = await sb
         .from("rooms")
         .update({ winner_name: me, winner_at: new Date().toISOString() })
@@ -233,10 +348,51 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       renderRoom();
     }
 
+    async function startCountdown() {
+      if (!room || !me || me !== room.host_name) return;
+
+      // If countdown running, ignore
+      if (room.countdown_start && room.countdown_seconds && !room.winner_name) {
+        const startMs = new Date(room.countdown_start).getTime();
+        const openMs = startMs + room.countdown_seconds * 1000;
+        if (Date.now() < openMs) return;
+      }
+
+      const { error } = await sb
+        .from("rooms")
+        .update({
+          countdown_start: new Date().toISOString(),
+          countdown_seconds: COUNTDOWN_DEFAULT,
+          winner_name: null,
+          winner_at: null
+        })
+        .eq("id", room.id);
+
+      if (error) alert(error.message);
+    }
+
+    async function resetBuzzer() {
+      if (!room || !me || me !== room.host_name) return;
+
+      const { error } = await sb
+        .from("rooms")
+        .update({
+          winner_name: null,
+          winner_at: null,
+          countdown_start: null,
+          countdown_seconds: null
+        })
+        .eq("id", room.id);
+
+      if (error) alert(error.message);
+    }
+
     /***** init *****/
     $("createRoomBtn").onclick = createRoom;
     $("joinBtn").onclick = joinRoom;
     buzzBtn.onclick = buzz;
+    startCountdownBtn.onclick = startCountdown;
+    resetBtn.onclick = resetBuzzer;
 
     (async function init() {
       if (!roomId) {
