@@ -1,0 +1,262 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Buzzer App</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Arial, sans-serif; margin: 0; background:#0b0b0c; color:#fff; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
+    .card { background:#151518; border-radius:16px; padding:16px; margin:12px 0; box-shadow:0 6px 18px rgba(0,0,0,.35); }
+    h1,h2 { margin: 6px 0 10px; }
+    input, button {
+      width: 100%; padding: 14px; font-size: 16px; border-radius: 12px; border: none;
+      box-sizing: border-box;
+    }
+    input { background:#222227; color:#fff; outline: 1px solid #333; }
+    button { background:#2b7cff; color:white; font-weight:700; cursor:pointer; }
+    button.secondary { background:#2a2a2f; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .row { display:flex; gap:8px; }
+    .row > * { flex:1; }
+    .pill { display:inline-block; padding:6px 10px; background:#232329; border-radius:999px; margin:4px 6px 0 0; }
+    .winner { font-size: 20px; font-weight: 800; color:#7CFF9A; }
+    .small { opacity:.8; font-size: 13px; }
+    a { color:#7db2ff; word-break:break-all; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📣 Buzzer</h1>
+
+    <!-- HOME VIEW -->
+    <div id="homeView" class="card">
+      <h2>Create a room</h2>
+      <input id="hostName" placeholder="Your name (host)" />
+      <div style="height:10px"></div>
+      <button id="createRoomBtn">Create room</button>
+      <p class="small">You’ll get a shareable link like: <br/> yoursite.com/?room=xxxx</p>
+    </div>
+
+    <!-- ROOM VIEW -->
+    <div id="roomView" style="display:none;">
+      <div class="card">
+        <h2>Room</h2>
+        <div id="shareBlock"></div>
+      </div>
+
+      <div id="joinCard" class="card" style="display:none;">
+        <h2>Join room</h2>
+        <input id="joinName" placeholder="Enter your name" />
+        <div style="height:10px"></div>
+        <button id="joinBtn">Join</button>
+      </div>
+
+      <div class="card">
+        <h2>Members</h2>
+        <div id="membersList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Buzzer</h2>
+        <button id="buzzBtn" disabled>BUZZ!</button>
+        <p id="statusText" class="small"></p>
+        <div id="winnerBox" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    /***** 1) PUT YOUR SUPABASE KEYS HERE *****/
+    const SUPABASE_URL = "YOUR_SUPABASE_URL";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    /***** helpers *****/
+    const $ = (id) => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
+    const roomId = params.get("room");
+
+    const homeView = $("homeView");
+    const roomView = $("roomView");
+    const joinCard = $("joinCard");
+    const buzzBtn = $("buzzBtn");
+    const statusText = $("statusText");
+    const winnerBox = $("winnerBox");
+    const membersList = $("membersList");
+    const shareBlock = $("shareBlock");
+
+    const localKey = (rid) => `buzzer_name_${rid}`;
+
+    let me = null;
+    let room = null;
+    let channel = null;
+
+    function renderRoom() {
+      if (!room) return;
+
+      // Share link
+      shareBlock.innerHTML = `
+        <div><b>Share this link:</b></div>
+        <a href="${location.origin}${location.pathname}?room=${room.id}">
+          ${location.origin}${location.pathname}?room=${room.id}
+        </a>
+      `;
+
+      // Members
+      membersList.innerHTML = "";
+      (room.members || []).forEach(n => {
+        const pill = document.createElement("span");
+        pill.className = "pill";
+        pill.textContent = n;
+        membersList.appendChild(pill);
+      });
+
+      // Winner / buzzer state
+      if (room.winner_name) {
+        buzzBtn.disabled = true;
+        statusText.textContent = "Buzzer closed.";
+        winnerBox.innerHTML = `
+          <div class="winner">🏆 ${room.winner_name} buzzed first!</div>
+          <div class="small">${new Date(room.winner_at).toLocaleString()}</div>
+        `;
+      } else {
+        winnerBox.innerHTML = `<div class="small">No winner yet. First buzz wins.</div>`;
+        buzzBtn.disabled = !me;
+        statusText.textContent = me ? "Ready…" : "Join to enable buzzer.";
+      }
+    }
+
+    async function loadRoom(rid) {
+      const { data, error } = await sb
+        .from("rooms")
+        .select("*")
+        .eq("id", rid)
+        .single();
+
+      if (error) {
+        alert("Room not found.");
+        location.href = location.pathname;
+        return;
+      }
+      room = data;
+      renderRoom();
+    }
+
+    function subscribeRoom(rid) {
+      if (channel) sb.removeChannel(channel);
+
+      channel = sb.channel("room-" + rid)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "rooms", filter: `id=eq.${rid}` },
+          payload => {
+            room = payload.new;
+            renderRoom();
+          }
+        )
+        .subscribe();
+    }
+
+    async function createRoom() {
+      const hostName = $("hostName").value.trim();
+      if (!hostName) return alert("Enter your name.");
+
+      const { data, error } = await sb
+        .from("rooms")
+        .insert({ host_name: hostName, members: [hostName] })
+        .select()
+        .single();
+
+      if (error) return alert(error.message);
+
+      // store host name locally for this room
+      localStorage.setItem(localKey(data.id), hostName);
+
+      // go to room
+      location.href = `${location.pathname}?room=${data.id}`;
+    }
+
+    async function joinRoom() {
+      const name = $("joinName").value.trim();
+      if (!name) return alert("Enter your name.");
+
+      // reload latest
+      await loadRoom(room.id);
+
+      if (room.winner_name) {
+        alert("Buzzer already won. You can still watch.");
+      }
+
+      const already = (room.members || []).includes(name);
+      const newMembers = already ? room.members : [...room.members, name];
+
+      const { error } = await sb
+        .from("rooms")
+        .update({ members: newMembers })
+        .eq("id", room.id);
+
+      if (error) return alert(error.message);
+
+      localStorage.setItem(localKey(room.id), name);
+      me = name;
+      joinCard.style.display = "none";
+      renderRoom();
+    }
+
+    async function buzz() {
+      if (!me || !room || room.winner_name) return;
+
+      buzzBtn.disabled = true;
+      statusText.textContent = "Buzzing…";
+
+      // atomic "first wins": update only if winner_name is null
+      const { data, error } = await sb
+        .from("rooms")
+        .update({ winner_name: me, winner_at: new Date().toISOString() })
+        .eq("id", room.id)
+        .is("winner_name", null)
+        .select()
+        .single();
+
+      if (error) {
+        statusText.textContent = "Someone else won first.";
+        await loadRoom(room.id);
+        return;
+      }
+
+      room = data;
+      renderRoom();
+    }
+
+    /***** init *****/
+    $("createRoomBtn").onclick = createRoom;
+    $("joinBtn").onclick = joinRoom;
+    buzzBtn.onclick = buzz;
+
+    (async function init() {
+      if (!roomId) {
+        homeView.style.display = "block";
+        roomView.style.display = "none";
+        return;
+      }
+
+      homeView.style.display = "none";
+      roomView.style.display = "block";
+
+      await loadRoom(roomId);
+      subscribeRoom(roomId);
+
+      me = localStorage.getItem(localKey(roomId));
+      if (!me) {
+        joinCard.style.display = "block";
+      } else {
+        joinCard.style.display = "none";
+      }
+      renderRoom();
+    })();
+  </script>
+</body>
+</html>
