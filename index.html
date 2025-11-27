@@ -79,6 +79,16 @@
       font-weight: 700;
       letter-spacing: .5px;
     }
+    .codeBox {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background:#222227;
+      display:inline-block;
+      margin-top:6px;
+    }
   </style>
 </head>
 
@@ -87,15 +97,26 @@
     <h1>📣 Buzzer</h1>
 
     <!-- HOME VIEW -->
-    <div id="homeView" class="card">
-      <h2>Create a room</h2>
-      <input id="hostName" placeholder="Your name (host)" />
-      <div style="height:10px"></div>
-      <button id="createRoomBtn">Create room</button>
-      <p class="small">
-        You’ll get a shareable link like:<br/>
-        yoursite.com/?room=xxxx
-      </p>
+    <div id="homeView">
+      <div class="card">
+        <h2>Create a room</h2>
+        <input id="hostName" placeholder="Your name (host)" />
+        <div style="height:10px"></div>
+        <button id="createRoomBtn">Create room</button>
+        <p class="small">
+          After creating, you’ll get a <b>room code</b> to share with players.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Join with code</h2>
+        <input id="joinCodeInput" placeholder="Enter room code (e.g. K7M2QZ)" />
+        <div style="height:10px"></div>
+        <button id="joinByCodeBtn">Join room</button>
+        <p class="small">
+          Ask the host for the 6-character code.
+        </p>
+      </div>
     </div>
 
     <!-- ROOM VIEW -->
@@ -167,6 +188,7 @@
     const hostControls = $("hostControls");
     const startCountdownBtn = $("startCountdownBtn");
     const resetBtn = $("resetBtn");
+    const joinCodeInput = $("joinCodeInput");
 
     const localKey = (rid) => `buzzer_name_${rid}`;
 
@@ -177,6 +199,11 @@
     let countdownTimer = null;
     const COUNTDOWN_DEFAULT = 3;
 
+    function generateRoomCode() {
+      // 6-char uppercase letters & digits
+      return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
     function isHostUser() {
       return me && room && me === room.host_name;
     }
@@ -184,16 +211,21 @@
     function renderRoom() {
       if (!room) return;
 
-      // Share link
-      shareBlock.innerHTML = `
-        <div><b>Share this link:</b></div>
-        <a href="${location.origin}${location.pathname}?room=${room.id}">
-          ${location.origin}${location.pathname}?room=${room.id}
-        </a>
-      `;
-
       const host = room.host_name;
       const hostView = isHostUser();
+      const code = room.code || "------";
+
+      // Show room code prominently, keep link as backup/info
+      shareBlock.innerHTML = `
+        <div class="small">Room code (share this with players):</div>
+        <div class="codeBox">${code}</div>
+        <div class="small" style="margin-top:8px;">
+          Room link (optional):<br/>
+          <a href="${location.origin}${location.pathname}?room=${room.id}">
+            ${location.origin}${location.pathname}?room=${room.id}
+          </a>
+        </div>
+      `;
 
       // Hint text
       membersHint.textContent = hostView
@@ -318,6 +350,8 @@
       const hostName = $("hostName").value.trim();
       if (!hostName) return alert("Enter your name.");
 
+      const code = generateRoomCode();
+
       const { data, error } = await sb
         .from("rooms")
         .insert({
@@ -326,12 +360,16 @@
           winner_name: null,
           winner_at: null,
           countdown_start: null,
-          countdown_seconds: null
+          countdown_seconds: null,
+          code
         })
         .select()
         .single();
 
-      if (error) return alert(error.message);
+      if (error) {
+        alert(error.message || "Error creating room. Try again.");
+        return;
+      }
 
       localStorage.setItem(localKey(data.id), hostName);
       location.href = `${location.pathname}?room=${data.id}`;
@@ -357,6 +395,26 @@
       me = name;
       joinCard.style.display = "none";
       renderRoom();
+    }
+
+    async function joinByCode() {
+      const rawCode = joinCodeInput.value.trim();
+      if (!rawCode) return alert("Enter a room code.");
+      const code = rawCode.toUpperCase();
+
+      const { data, error } = await sb
+        .from("rooms")
+        .select("id")
+        .eq("code", code)
+        .single();
+
+      if (error || !data) {
+        alert("Room with that code not found.");
+        return;
+      }
+
+      // redirect to room URL using its id
+      location.href = `${location.pathname}?room=${data.id}`;
     }
 
     async function deleteMember(nameToDelete) {
@@ -464,6 +522,7 @@
     /***** init *****/
     $("createRoomBtn").onclick = createRoom;
     $("joinBtn").onclick = joinRoom;
+    $("joinByCodeBtn").onclick = joinByCode;
     buzzBtn.onclick = buzz;
     startCountdownBtn.onclick = startCountdown;
     resetBtn.onclick = resetBuzzer;
