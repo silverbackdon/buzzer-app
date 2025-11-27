@@ -3,106 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Buzzer App</title>
-  <style>
-    :root { color-scheme: dark; }
-    body {
-      font-family: system-ui, -apple-system, Arial, sans-serif;
-      margin: 0;
-      background:#0b0b0c;
-      color:#fff;
-    }
-    .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
-    .card {
-      background:#151518;
-      border-radius:16px;
-      padding:16px;
-      margin:12px 0;
-      box-shadow:0 6px 18px rgba(0,0,0,.35);
-    }
-    h1,h2 { margin: 6px 0 10px; }
-    input, button {
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      border-radius: 12px;
-      border: none;
-      box-sizing: border-box;
-    }
-    input {
-      background:#222227;
-      color:#fff;
-      outline: 1px solid #333;
-    }
-    button {
-      background:#2b7cff;
-      color:white;
-      font-weight:700;
-      cursor:pointer;
-    }
-    button.secondary { background:#2a2a2f; }
-    button:disabled { opacity:.5; cursor:not-allowed; }
-    .row { display:flex; gap:8px; }
-    .row > * { flex:1; }
-    .winner {
-      font-size: 20px;
-      font-weight: 800;
-      color:#7CFF9A;
-    }
-    .small { opacity:.8; font-size: 13px; }
-    a { color:#7db2ff; word-break:break-all; }
-
-    /* Member list rows */
-    .memberRow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      background:#232329;
-      border-radius:12px;
-      padding:8px 10px;
-      margin:6px 0;
-    }
-    .memberName{ font-size:15px; font-weight:600; }
-    .deleteBtn{
-      width:auto;
-      padding:4px 10px;
-      font-size:18px;
-      line-height:18px;
-      border-radius:10px;
-      background:#3a3a42;
-      font-weight:800;
-    }
-    .deleteBtn:hover{ background:#ff5b5b; color:#fff; }
-
-    .countdownText {
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: .5px;
-    }
-    .codeBox {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: 4px;
-      padding: 8px 12px;
-      border-radius: 12px;
-      background:#222227;
-      display:inline-block;
-      margin-top:6px;
-    }
-  </style>
+  <title>Bento Box Buzzer</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
+  <div class="bg-orbit"></div>
+  <div class="bg-orbit orbit-2"></div>
+
   <div class="wrap">
-    <h1>📣 Buzzer</h1>
+    <header class="app-header">
+      <div class="logo-pill">
+        <span class="logo-icon">🔔</span>
+        <span class="logo-text">Bento Box Buzzer</span>
+      </div>
+      <p class="tagline">Fastest finger wins. Party mode on.</p>
+    </header>
 
     <!-- HOME VIEW -->
     <div id="homeView">
-      <div class="card">
+      <div class="card card-glow">
         <h2>Create a room</h2>
-        <input id="hostName" placeholder="Your name (host)" />
-        <div style="height:10px"></div>
-        <button id="createRoomBtn">Create room</button>
+        <input id="hostName" class="input" placeholder="Your name (host)" />
+        <div class="spacer-xs"></div>
+        <button id="createRoomBtn" class="btn btn-primary">Create room</button>
         <p class="small">
           After creating, you’ll get a <b>room code</b> to share with players.
         </p>
@@ -110,9 +34,9 @@
 
       <div class="card">
         <h2>Join with code</h2>
-        <input id="joinCodeInput" placeholder="Enter room code (e.g. K7M2QZ)" />
-        <div style="height:10px"></div>
-        <button id="joinByCodeBtn">Join room</button>
+        <input id="joinCodeInput" class="input" placeholder="Enter room code (e.g. K7M2QZ)" />
+        <div class="spacer-xs"></div>
+        <button id="joinByCodeBtn" class="btn btn-secondary">Join room</button>
         <p class="small">
           Ask the host for the 6-character code.
         </p>
@@ -121,41 +45,41 @@
 
     <!-- ROOM VIEW -->
     <div id="roomView" style="display:none;">
-      <div class="card">
+      <div class="card card-glow">
         <h2>Room</h2>
         <div id="shareBlock"></div>
       </div>
 
       <div id="joinCard" class="card" style="display:none;">
         <h2>Join room</h2>
-        <input id="joinName" placeholder="Enter your name" />
-        <div style="height:10px"></div>
-        <button id="joinBtn">Join</button>
+        <input id="joinName" class="input" placeholder="Enter your name" />
+        <div class="spacer-xs"></div>
+        <button id="joinBtn" class="btn btn-primary">Join</button>
       </div>
 
       <div class="card">
-        <h2>Members</h2>
+        <h2>Players</h2>
         <div id="membersList"></div>
-        <div id="membersHint" class="small" style="margin-top:6px; opacity:.7;"></div>
+        <div id="membersHint" class="small hint"></div>
       </div>
 
-      <div class="card">
+      <div class="card buzzer-card">
         <h2>Buzzer</h2>
 
         <!-- Host controls -->
-        <div id="hostControls" style="display:none; margin-bottom:8px;">
+        <div id="hostControls" class="host-controls" style="display:none;">
           <div class="row">
-            <button id="startCountdownBtn" class="secondary">Start 3-2-1 Countdown</button>
-            <button id="resetBtn" class="secondary">Reset Buzzer</button>
+            <button id="startCountdownBtn" class="btn btn-chip">Start 3-2-1</button>
+            <button id="resetBtn" class="btn btn-chip">Reset Buzzer</button>
           </div>
-          <div class="small" style="margin-top:6px; opacity:.7;">
+          <div class="small host-note">
             Host controls only
           </div>
         </div>
 
-        <button id="buzzBtn" disabled>BUZZ!</button>
-        <p id="statusText" class="small"></p>
-        <div id="winnerBox" style="margin-top:10px;"></div>
+        <button id="buzzBtn" class="btn buzzer-btn" disabled>BUZZ!</button>
+        <p id="statusText" class="small status-text"></p>
+        <div id="winnerBox" class="winner-box"></div>
       </div>
     </div>
   </div>
@@ -215,11 +139,11 @@
       const hostView = isHostUser();
       const code = room.code || "------";
 
-      // Show room code prominently, keep link as backup/info
+      // Room code + link
       shareBlock.innerHTML = `
         <div class="small">Room code (share this with players):</div>
         <div class="codeBox">${code}</div>
-        <div class="small" style="margin-top:8px;">
+        <div class="small share-link">
           Room link (optional):<br/>
           <a href="${location.origin}${location.pathname}?room=${room.id}">
             ${location.origin}${location.pathname}?room=${room.id}
@@ -230,7 +154,7 @@
       // Hint text
       membersHint.textContent = hostView
         ? "You are the host. You can remove players with ×."
-        : `Host is ${host}.`;
+        : \`Host is \${host}.\`;
 
       // Members list (host-only delete)
       membersList.innerHTML = "";
@@ -247,10 +171,9 @@
 
         row.appendChild(nameEl);
 
-        // Show delete only if viewer is host AND target is not host
         if (hostView && n !== host) {
           const delBtn = document.createElement("button");
-          delBtn.className = "deleteBtn";
+          delBtn.className = "btn deleteBtn";
           delBtn.textContent = "×";
           delBtn.setAttribute("data-name", n);
           row.appendChild(delBtn);
@@ -259,7 +182,7 @@
         membersList.appendChild(row);
       });
 
-      // Host-only controls visibility
+      // Host controls visibility
       hostControls.style.display = hostView ? "block" : "none";
 
       // Countdown logic
@@ -277,6 +200,7 @@
 
       if (room.winner_name) {
         buzzBtn.disabled = true;
+        buzzBtn.classList.remove("buzzer-active");
         startCountdownBtn.disabled = true;
         statusText.textContent = "Buzzer closed.";
         winnerBox.innerHTML = `
@@ -290,13 +214,16 @@
 
         if (!me) {
           buzzBtn.disabled = true;
+          buzzBtn.classList.remove("buzzer-active");
           statusText.textContent = "Join to enable buzzer.";
         } else if (!isOpen) {
           buzzBtn.disabled = true;
+          buzzBtn.classList.remove("buzzer-active");
           const secondsLeft = Math.ceil(remainingMs / 1000);
           statusText.innerHTML = `<span class="countdownText">Countdown… ${secondsLeft}</span>`;
         } else {
           buzzBtn.disabled = false;
+          buzzBtn.classList.add("buzzer-active");
           statusText.textContent = "Ready…";
         }
       }
@@ -337,7 +264,7 @@
       channel = sb.channel("room-" + rid)
         .on(
           "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "rooms", filter: `id=eq.${rid}` },
+          { event: "UPDATE", schema: "public", table: "rooms", filter: \`id=eq.\${rid}\` },
           payload => {
             room = payload.new;
             renderRoom();
@@ -372,7 +299,7 @@
       }
 
       localStorage.setItem(localKey(data.id), hostName);
-      location.href = `${location.pathname}?room=${data.id}`;
+      location.href = \`\${location.pathname}?room=\${data.id}\`;
     }
 
     async function joinRoom() {
@@ -413,20 +340,17 @@
         return;
       }
 
-      // redirect to room URL using its id
-      location.href = `${location.pathname}?room=${data.id}`;
+      location.href = \`\${location.pathname}?room=\${data.id}\`;
     }
 
     async function deleteMember(nameToDelete) {
       if (!room || !isHostUser()) return;
 
-      // reload latest
       await loadRoom(room.id);
 
       const currentMembers = room.members || [];
       const hostName = room.host_name;
 
-      // never delete host
       if (nameToDelete === hostName) return;
 
       const newMembers = currentMembers.filter(n => n !== nameToDelete);
@@ -461,6 +385,7 @@
       }
 
       buzzBtn.disabled = true;
+      buzzBtn.classList.remove("buzzer-active");
       statusText.textContent = "Buzzing…";
 
       const { data, error } = await sb
@@ -527,7 +452,6 @@
     startCountdownBtn.onclick = startCountdown;
     resetBtn.onclick = resetBuzzer;
 
-    // Host-only delete (event delegation)
     membersList.addEventListener("click", (e) => {
       if (!isHostUser()) return;
       const btn = e.target.closest(".deleteBtn");
