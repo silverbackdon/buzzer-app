@@ -4,7 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bento Box Buzzer</title>
-  <link rel="stylesheet" href="style.css" />
+  <!-- IMPORTANT: make sure this file exists as style.css in the SAME folder -->
+  <link rel="stylesheet" href="./style.css" />
 </head>
 
 <body>
@@ -21,7 +22,7 @@
         <h2>Create a room</h2>
         <input id="hostName" class="input" placeholder="Your name (host)" />
         <div class="spacer-xs"></div>
-        <button id="createRoomBtn" class="btn btn-secondary">Create room</button>
+        <button id="createRoomBtn" class="btn btn-primary">Create room</button>
         <p class="small">
           After creating, you’ll get a <b>room code</b> to share with players.
         </p>
@@ -29,7 +30,7 @@
 
       <div class="card">
         <h2>Join with code</h2>
-        <input id="joinCodeInput" class="input" placeholder="Enter room code (e.g. GXE123)" />
+        <input id="joinCodeInput" class="input" placeholder="Enter room code (e.g. K7M2QZ)" />
         <div class="spacer-xs"></div>
         <button id="joinByCodeBtn" class="btn btn-secondary">Join room</button>
         <p class="small">
@@ -90,7 +91,6 @@
     const { createClient } = supabase;
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    /***** helpers *****/
     const $ = (id) => document.getElementById(id);
 
     const params = new URLSearchParams(location.search);
@@ -147,7 +147,7 @@
 
       membersHint.textContent = hostView
         ? "You are the host. You can remove players with ×."
-        : \`Host is \${host}.\`;
+        : "Host is " + host + ".";
 
       membersList.innerHTML = "";
       (room.members || []).forEach(n => {
@@ -260,7 +260,7 @@
       channel = sb.channel("room-" + rid)
         .on(
           "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "rooms", filter: \`id=eq.\${rid}\` },
+          { event: "UPDATE", schema: "public", table: "rooms", filter: "id=eq." + rid },
           payload => {
             room = payload.new;
             renderRoom();
@@ -295,7 +295,7 @@
       }
 
       localStorage.setItem(localKey(data.id), hostName);
-      location.href = \`\${location.pathname}?room=\${data.id}\`;
+      location.href = location.pathname + "?room=" + data.id;
     }
 
     async function joinRoom() {
@@ -336,7 +336,7 @@
         return;
       }
 
-      location.href = \`\${location.pathname}?room=\${data.id}\`;
+      location.href = location.pathname + "?room=" + data.id;
     }
 
     async function deleteMember(nameToDelete) {
@@ -443,9 +443,7 @@
     function attachHeaderInteractions() {
       const logoBtn = document.querySelector(".bbb-logo-click");
       if (!logoBtn) return;
-
       logoBtn.addEventListener("click", () => {
-        // Clear query params and go back to home
         location.href = location.pathname;
       });
     }
@@ -453,7 +451,6 @@
     async function loadHeader() {
       const container = document.getElementById("headerContainer");
       if (!container) return;
-
       try {
         const res = await fetch("header.html");
         const html = await res.text();
@@ -464,7 +461,6 @@
       }
     }
 
-    /***** init *****/
     document.addEventListener("DOMContentLoaded", async () => {
       await loadHeader();
 
